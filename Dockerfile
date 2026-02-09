@@ -12,7 +12,7 @@ CMD ["npm", "run", "dev"]
 
 # 本番ステージ
 FROM base AS prod
-RUN npm ci --omit=dev
+RUN npm ci
 COPY . .
 RUN npm run build
 CMD ["npm", "start"]
