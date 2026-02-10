@@ -7,6 +7,10 @@ const router = Router()
 const controller = new QuizController()
 
 router.get('/categories', (req, res) => controller.getCategories(req, res))
+router.get('/tags', (req, res) => controller.getTags(req, res))
+router.post('/tags', authMiddleware, (req, res) => controller.createTag(req, res))
+router.put('/tags/:tagId', authMiddleware, (req, res) => controller.updateTag(req, res))
+router.delete('/tags/:tagId', authMiddleware, (req, res) => controller.deleteTag(req, res))
 router.get('/category/:categoryId/quizzes', (req, res) =>
   controller.getQuizzesByCategory(req, res)
 )
