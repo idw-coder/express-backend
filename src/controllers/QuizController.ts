@@ -3,15 +3,14 @@ import { AppDataSource } from '../datasource'
 import { QuizCategory } from '../entities/QuizCategory'
 import { Quiz } from '../entities/Quiz'
 import { QuizChoice } from '../entities/QuizChoice'
+import { QuizTagging } from '../entities/QuizTagging'
+import { QuizTag } from '../entities/QuizTag'
 
 export class QuizController {
-  /** カテゴリ一覧取得（deleted_at IS NULL、display_order 昇順） */
   async getCategories(req: Request, res: Response): Promise<void> {
     try {
       const repo = AppDataSource.getRepository(QuizCategory)
-      const categories = await repo.find({
-        order: { displayOrder: 'ASC' },
-      })
+      const categories = await repo.find({ order: { displayOrder: 'ASC' } })
       const list = categories.map((c) => ({
         id: c.id,
         slug: c.slug,
@@ -27,7 +26,6 @@ export class QuizController {
     }
   }
 
-  /** 指定カテゴリの問題一覧（deleted_at IS NULL、id 昇順。選択肢は含めない） */
   async getQuizzesByCategory(req: Request, res: Response): Promise<void> {
     try {
       const categoryId = Number(req.params.categoryId)
@@ -35,19 +33,14 @@ export class QuizController {
         res.status(400).json({ error: 'Invalid category id' })
         return
       }
-
       const categoryRepo = AppDataSource.getRepository(QuizCategory)
       const category = await categoryRepo.findOne({ where: { id: categoryId } })
       if (!category) {
         res.status(404).json({ error: 'Category not found' })
         return
       }
-
       const quizRepo = AppDataSource.getRepository(Quiz)
-      const quizzes = await quizRepo.find({
-        where: { categoryId },
-        order: { id: 'ASC' },
-      })
+      const quizzes = await quizRepo.find({ where: { categoryId }, order: { id: 'ASC' } })
       const list = quizzes.map((q) => ({
         id: q.id,
         slug: q.slug,
@@ -60,7 +53,6 @@ export class QuizController {
     }
   }
 
-  /** 指定問題の詳細と選択肢（deleted_at IS NULL、選択肢は display_order 昇順） */
   async getQuizDetail(req: Request, res: Response): Promise<void> {
     try {
       const quizId = Number(req.params.quizId)
@@ -68,17 +60,26 @@ export class QuizController {
         res.status(400).json({ error: 'Invalid quiz id' })
         return
       }
-
       const quizRepo = AppDataSource.getRepository(Quiz)
-      const quiz = await quizRepo.findOne({
-        where: { id: quizId },
-        relations: ['choices'],
-      })
+      const quiz = await quizRepo.findOne({ where: { id: quizId }, relations: ['choices'] })
       if (!quiz) {
         res.status(404).json({ error: 'Quiz not found' })
         return
       }
 
+      const taggingRepo = AppDataSource.getRepository(QuizTagging)
+      /**
+       * find()
+       * 第一引数には where 句を指定する
+       * 第二引数には relations を指定する
+       * relations とは、関連するエンティティを取得するためのオプション
+       */
+      const taggings = await taggingRepo.find({ where: { quizId }, relations: ['quizTag'] })
+      const tags = taggings.map((t) => ({
+        id: t.quizTag.id,
+        slug: t.quizTag.slug,
+        name: t.quizTag.name,
+      }))
       const choices = (quiz.choices ?? [])
         .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
         .map((c) => ({
@@ -87,7 +88,6 @@ export class QuizController {
           is_correct: c.isCorrect,
           display_order: c.displayOrder ?? undefined,
         }))
-
       res.json({
         id: quiz.id,
         slug: quiz.slug,
@@ -95,6 +95,7 @@ export class QuizController {
         question: quiz.question,
         explanation: quiz.explanation ?? undefined,
         choices,
+        tags,
       })
     } catch (error) {
       console.error(error)
@@ -102,7 +103,6 @@ export class QuizController {
     }
   }
 
-  /** クイズ新規作成（認証必須。author_id は req.user.userId） */
   async createQuiz(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.userId
@@ -110,12 +110,13 @@ export class QuizController {
         res.status(401).json({ error: 'Unauthorized' })
         return
       }
-      const { category_id, slug, question, explanation, choices } = req.body as {
+      const { category_id, slug, question, explanation, choices, tags } = req.body as {
         category_id?: number
         slug?: string
         question?: string
         explanation?: string
         choices?: Array<{ choice_text: string; is_correct: boolean; display_order?: number }>
+        tags?: string[]
       }
       if (!category_id || !slug || !question) {
         res.status(400).json({ error: 'category_id, slug, question are required' })
@@ -126,21 +127,18 @@ export class QuizController {
         res.status(400).json({ error: 'At least one choice is required' })
         return
       }
-
       const categoryRepo = AppDataSource.getRepository(QuizCategory)
       const category = await categoryRepo.findOne({ where: { id: Number(category_id) } })
       if (!category) {
         res.status(404).json({ error: 'Category not found' })
         return
       }
-
       const quizRepo = AppDataSource.getRepository(Quiz)
       const existing = await quizRepo.findOne({ where: { slug } })
       if (existing) {
         res.status(409).json({ error: 'Quiz with this slug already exists' })
         return
       }
-
       const quiz = quizRepo.create({
         slug,
         categoryId: Number(category_id),
@@ -163,10 +161,21 @@ export class QuizController {
         await choiceRepo.save(choice)
       }
 
-      const saved = await quizRepo.findOne({
-        where: { id: quiz.id },
-        relations: ['choices'],
-      })
+      if (Array.isArray(tags) && tags.length > 0) {
+        const tagRepo = AppDataSource.getRepository(QuizTag)
+        const taggingRepo = AppDataSource.getRepository(QuizTagging)
+        for (const tagSlug of tags) {
+          const tag = await tagRepo.findOne({ where: { slug: tagSlug } })
+          if (!tag) {
+            res.status(400).json({ error: `Tag not found: ${tagSlug}` })
+            return
+          }
+          const tagging = taggingRepo.create({ quizId: quiz.id, quizTagId: tag.id })
+          await taggingRepo.save(tagging)
+        }
+      }
+
+      const saved = await quizRepo.findOne({ where: { id: quiz.id }, relations: ['choices'] })
       if (!saved) {
         res.status(201).json({ id: quiz.id, slug: quiz.slug, message: 'Created' })
         return
@@ -179,6 +188,13 @@ export class QuizController {
           is_correct: c.isCorrect,
           display_order: c.displayOrder ?? undefined,
         }))
+      const taggingRepo = AppDataSource.getRepository(QuizTagging)
+      const taggings = await taggingRepo.find({ where: { quizId: saved.id }, relations: ['quizTag'] })
+      const tagList = taggings.map((t) => ({
+        id: t.quizTag.id,
+        slug: t.quizTag.slug,
+        name: t.quizTag.name,
+      }))
       res.status(201).json({
         id: saved.id,
         slug: saved.slug,
@@ -186,6 +202,7 @@ export class QuizController {
         question: saved.question,
         explanation: saved.explanation ?? undefined,
         choices: choiceList,
+        tags: tagList,
       })
     } catch (error) {
       console.error(error)
@@ -193,7 +210,6 @@ export class QuizController {
     }
   }
 
-  /** クイズ更新（認証必須。本人のみ） */
   async updateQuiz(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.userId
@@ -206,25 +222,20 @@ export class QuizController {
         res.status(400).json({ error: 'Invalid quiz id' })
         return
       }
-
       const quizRepo = AppDataSource.getRepository(Quiz)
-      const quiz = await quizRepo.findOne({
-        where: { id: quizId },
-        relations: ['choices'],
-      })
+      const quiz = await quizRepo.findOne({ where: { id: quizId }, relations: ['choices'] })
       if (!quiz) {
         res.status(404).json({ error: 'Quiz not found' })
         return
       }
-
-      const { category_id, slug, question, explanation, choices } = req.body as {
+      const { category_id, slug, question, explanation, choices, tags } = req.body as {
         category_id?: number
         slug?: string
         question?: string
         explanation?: string
         choices?: Array<{ choice_text: string; is_correct: boolean; display_order?: number }>
+        tags?: string[]
       }
-
       if (category_id != null) {
         const categoryRepo = AppDataSource.getRepository(QuizCategory)
         const category = await categoryRepo.findOne({ where: { id: Number(category_id) } })
@@ -255,10 +266,22 @@ export class QuizController {
         }
       }
 
-      const updated = await quizRepo.findOne({
-        where: { id: quiz.id },
-        relations: ['choices'],
-      })
+      if (Array.isArray(tags)) {
+        const tagRepo = AppDataSource.getRepository(QuizTag)
+        const taggingRepo = AppDataSource.getRepository(QuizTagging)
+        await taggingRepo.delete({ quizId: quiz.id })
+        for (const tagSlug of tags) {
+          const tag = await tagRepo.findOne({ where: { slug: tagSlug } })
+          if (!tag) {
+            res.status(400).json({ error: `Tag not found: ${tagSlug}` })
+            return
+          }
+          const tagging = taggingRepo.create({ quizId: quiz.id, quizTagId: tag.id })
+          await taggingRepo.save(tagging)
+        }
+      }
+
+      const updated = await quizRepo.findOne({ where: { id: quiz.id }, relations: ['choices'] })
       if (!updated) {
         res.json({ id: quiz.id, message: 'Updated' })
         return
@@ -271,6 +294,13 @@ export class QuizController {
           is_correct: c.isCorrect,
           display_order: c.displayOrder ?? undefined,
         }))
+      const taggingRepo = AppDataSource.getRepository(QuizTagging)
+      const taggings = await taggingRepo.find({ where: { quizId: updated.id }, relations: ['quizTag'] })
+      const tagList = taggings.map((t) => ({
+        id: t.quizTag.id,
+        slug: t.quizTag.slug,
+        name: t.quizTag.name,
+      }))
       res.json({
         id: updated.id,
         slug: updated.slug,
@@ -278,6 +308,7 @@ export class QuizController {
         question: updated.question,
         explanation: updated.explanation ?? undefined,
         choices: choiceList,
+        tags: tagList,
       })
     } catch (error) {
       console.error(error)
@@ -285,7 +316,6 @@ export class QuizController {
     }
   }
 
-  /** クイズ削除（ソフトデリート。認証必須。本人のみ） */
   async deleteQuiz(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.userId
@@ -298,14 +328,12 @@ export class QuizController {
         res.status(400).json({ error: 'Invalid quiz id' })
         return
       }
-
       const quizRepo = AppDataSource.getRepository(Quiz)
       const quiz = await quizRepo.findOne({ where: { id: quizId } })
       if (!quiz) {
         res.status(404).json({ error: 'Quiz not found' })
         return
       }
-
       await quizRepo.softRemove(quiz)
       res.json({ message: 'Quiz deleted' })
     } catch (error) {
