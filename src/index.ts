@@ -8,7 +8,6 @@ import authRouter from "./routes/auth";
 import noteRouter from "./routes/note";
 import uploadRouter from "./routes/upload";
 import quizRouter from "./routes/quiz";
-import { jsonCharsetMiddleware } from "./middleware/jsonCharset";
 import cors from "cors";
 
 const app = express();

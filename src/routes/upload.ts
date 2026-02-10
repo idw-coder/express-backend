@@ -101,7 +101,17 @@ router.post('/:category', (req: Request, res: Response) => {
       return
     }
 
-    // アップロード先の相対パスからURLを構築
+    /**
+     * アップロード先の相対パスからURLを構築
+     * 
+     * path.relative()
+     * 第一引数には基準となるパスを指定する
+     * 第二引数には相対パスを指定する
+     * 
+     * cwd()
+     * 現在のワーキングディレクトリを取得する
+     * 
+     */
     const relativePath = path.relative(process.cwd(), req.file.path).replace(/\\/g, '/')
     const url = `/${relativePath}`
 
