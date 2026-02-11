@@ -14,6 +14,9 @@ router.delete('/tags/:tagId', authMiddleware, (req, res) => controller.deleteTag
 router.get('/category/:categoryId/quizzes', (req, res) =>
   controller.getQuizzesByCategory(req, res)
 )
+router.get('/category/:categoryId/tags', (req, res) =>
+  controller.getTagsByCategory(req, res)
+)
 router.get('/:quizId', (req, res) => controller.getQuizDetail(req, res))
 
 router.post('/', authMiddleware, (req, res) => controller.createQuiz(req, res))

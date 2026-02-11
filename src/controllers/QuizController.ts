@@ -1,3 +1,8 @@
+// TODO 分割することを検討、修正時は quiz.ts も修正
+//   - QuizCategoryController.ts : getCategories
+//   - QuizTagController.ts      : getTags / createTag / updateTag / deleteTag
+//   - QuizController.ts         : getQuizzesByCategory / getQuizDetail / createQuiz / updateQuiz / deleteQuiz
+
 import { Request, Response } from "express";
 import { AppDataSource } from "../datasource";
 import { QuizCategory } from "../entities/QuizCategory";
@@ -44,83 +49,111 @@ export class QuizController {
 
   async createTag(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId
+      const userId = req.user?.userId;
       if (userId == null) {
-        res.status(401).json({ error: 'Unauthorized' })
-        return
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
-      const { slug, name } = req.body as { slug?: string; name?: string }
+      const { slug, name } = req.body as { slug?: string; name?: string };
       if (!slug || !name) {
-        res.status(400).json({ error: 'slug and name are required' })
-        return
+        res.status(400).json({ error: "slug and name are required" });
+        return;
       }
-      const repo = AppDataSource.getRepository(QuizTag)
-      const existing = await repo.findOne({ where: { slug } })
+      const repo = AppDataSource.getRepository(QuizTag);
+      const existing = await repo.findOne({ where: { slug } });
       if (existing) {
-        res.status(409).json({ error: 'Tag with this slug already exists' })
-        return
+        res.status(409).json({ error: "Tag with this slug already exists" });
+        return;
       }
-      const tag = repo.create({ slug, name })
-      await repo.save(tag)
-      res.status(201).json({ id: tag.id, slug: tag.slug, name: tag.name })
+      const tag = repo.create({ slug, name });
+      await repo.save(tag);
+      res.status(201).json({ id: tag.id, slug: tag.slug, name: tag.name });
     } catch (error) {
-      console.error(error)
-      res.status(500).json({ error: 'Internal server error' })
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
 
   async updateTag(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId
+      const userId = req.user?.userId;
       if (userId == null) {
-        res.status(401).json({ error: 'Unauthorized' })
-        return
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
-      const tagId = Number(req.params.tagId)
+      const tagId = Number(req.params.tagId);
       if (!Number.isFinite(tagId)) {
-        res.status(400).json({ error: 'Invalid tag id' })
-        return
+        res.status(400).json({ error: "Invalid tag id" });
+        return;
       }
-      const repo = AppDataSource.getRepository(QuizTag)
-      const tag = await repo.findOne({ where: { id: tagId } })
+      const repo = AppDataSource.getRepository(QuizTag);
+      const tag = await repo.findOne({ where: { id: tagId } });
       if (!tag) {
-        res.status(404).json({ error: 'Tag not found' })
-        return
+        res.status(404).json({ error: "Tag not found" });
+        return;
       }
-      const { slug, name } = req.body as { slug?: string; name?: string }
-      if (slug !== undefined) tag.slug = slug
-      if (name !== undefined) tag.name = name
-      await repo.save(tag)
-      res.json({ id: tag.id, slug: tag.slug, name: tag.name })
+      const { slug, name } = req.body as { slug?: string; name?: string };
+      if (slug !== undefined) tag.slug = slug;
+      if (name !== undefined) tag.name = name;
+      await repo.save(tag);
+      res.json({ id: tag.id, slug: tag.slug, name: tag.name });
     } catch (error) {
-      console.error(error)
-      res.status(500).json({ error: 'Internal server error' })
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
-  
+
   async deleteTag(req: Request, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId
+      const userId = req.user?.userId;
       if (userId == null) {
-        res.status(401).json({ error: 'Unauthorized' })
-        return
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
-      const tagId = Number(req.params.tagId)
+      const tagId = Number(req.params.tagId);
       if (!Number.isFinite(tagId)) {
-        res.status(400).json({ error: 'Invalid tag id' })
-        return
+        res.status(400).json({ error: "Invalid tag id" });
+        return;
       }
-      const repo = AppDataSource.getRepository(QuizTag)
-      const tag = await repo.findOne({ where: { id: tagId } })
+      const repo = AppDataSource.getRepository(QuizTag);
+      const tag = await repo.findOne({ where: { id: tagId } });
       if (!tag) {
-        res.status(404).json({ error: 'Tag not found' })
-        return
+        res.status(404).json({ error: "Tag not found" });
+        return;
       }
-      await repo.remove(tag)
-      res.json({ message: 'Tag deleted' })
+      await repo.remove(tag);
+      res.json({ message: "Tag deleted" });
     } catch (error) {
-      console.error(error)
-      res.status(500).json({ error: 'Internal server error' })
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
+  // このカテゴリのクイズに紐付いているタグだけを抽出
+  async getTagsByCategory(req: Request, res: Response): Promise<void> {
+    try {
+      const categoryId = Number(req.params.categoryId);
+      if (!Number.isFinite(categoryId)) {
+        res.status(400).json({ error: "Invalid category id" });
+        return;
+      }
+
+      const tagRepo = AppDataSource.getRepository(QuizTag);
+
+      const tags = await tagRepo
+        .createQueryBuilder("tag")
+        .innerJoin("quiz_tagging", "tagging", "tagging.quiz_tag_id = tag.id")
+        .innerJoin("quiz", "quiz", "quiz.id = tagging.quiz_id")
+        .where("quiz.category_id = :categoryId", { categoryId })
+        .select(["tag.id", "tag.slug", "tag.name"])
+        .distinct(true)
+        .orderBy("tag.name", "ASC")
+        .getMany();
+
+      res.json(tags);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
     }
   }
 
@@ -139,15 +172,60 @@ export class QuizController {
         res.status(404).json({ error: "Category not found" });
         return;
       }
+      const { tagSlug, q } = req.query as { tagSlug?: string; q?: string };
+
       const quizRepo = AppDataSource.getRepository(Quiz);
-      const quizzes = await quizRepo.find({
-        where: { categoryId },
-        order: { id: "ASC" },
-      });
+      let qb = quizRepo // qb = query builder
+        .createQueryBuilder("quiz")
+        .where("quiz.categoryId = :categoryId", { categoryId })
+        .orderBy("quiz.id", "ASC");
+
+      if (tagSlug) {
+        qb = qb
+          .innerJoin(QuizTagging, "tagging", "tagging.quiz_id = quiz.id")
+          .innerJoin(
+            QuizTag,
+            "tag",
+            "tag.id = tagging.quiz_tag_id AND tag.slug = :tagSlug",
+            { tagSlug },
+          );
+      }
+
+      if (q) {
+        qb = qb.andWhere("quiz.question LIKE :q", { q: `%${q}%` });
+      }
+
+      const quizzes = await qb.getMany();
+
+      const quizIds = quizzes.map((q) => q.id);
+      const taggingRepo = AppDataSource.getRepository(QuizTagging);
+      const taggings =
+        quizIds.length > 0
+          ? await taggingRepo.find({
+              where: quizIds.map((id) => ({ quizId: id })),
+              relations: ["quizTag"],
+            })
+          : [];
+
+      const tagsByQuizId = new Map<
+        number,
+        { id: number; slug: string; name: string }[]
+      >();
+      for (const tagging of taggings) {
+        const existing = tagsByQuizId.get(tagging.quizId) ?? [];
+        existing.push({
+          id: tagging.quizTag.id,
+          slug: tagging.quizTag.slug,
+          name: tagging.quizTag.name,
+        });
+        tagsByQuizId.set(tagging.quizId, existing);
+      }
+
       const list = quizzes.map((q) => ({
         id: q.id,
         slug: q.slug,
         question: q.question,
+        tags: tagsByQuizId.get(q.id) ?? [],
       }));
       res.json(list);
     } catch (error) {
