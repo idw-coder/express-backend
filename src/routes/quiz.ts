@@ -1,12 +1,14 @@
 import { Router } from 'express'
-import { QuizController } from '../controllers/QuizController'
 import { authMiddleware } from '../middleware/auth'
 import { requireRole } from '../middleware/requireRole'
+import { QuizController } from '../controllers/QuizController'
+import { QuizCategoryController } from '../controllers/QuizCategoryController'
 
 const router = Router()
 const controller = new QuizController()
+const categoryController = new QuizCategoryController()
 
-router.get('/categories', (req, res) => controller.getCategories(req, res))
+router.get('/categories', (req, res) => categoryController.getCategories(req, res))
 router.get('/tags', (req, res) => controller.getTags(req, res))
 router.post('/tags', authMiddleware, (req, res) => controller.createTag(req, res))
 router.put('/tags/:tagId', authMiddleware, (req, res) => controller.updateTag(req, res))

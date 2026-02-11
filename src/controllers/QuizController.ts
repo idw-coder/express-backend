@@ -1,5 +1,4 @@
 // TODO 分割することを検討、修正時は quiz.ts も修正
-//   - QuizCategoryController.ts : getCategories
 //   - QuizTagController.ts      : getTags / createTag / updateTag / deleteTag
 //   - QuizController.ts         : getQuizzesByCategory / getQuizDetail / createQuiz / updateQuiz / deleteQuiz
 
@@ -12,25 +11,6 @@ import { QuizTagging } from "../entities/QuizTagging";
 import { QuizTag } from "../entities/QuizTag";
 
 export class QuizController {
-  async getCategories(req: Request, res: Response): Promise<void> {
-    try {
-      const repo = AppDataSource.getRepository(QuizCategory);
-      const categories = await repo.find({ order: { displayOrder: "ASC" } });
-      const list = categories.map((c) => ({
-        id: c.id,
-        slug: c.slug,
-        category_name: c.categoryName,
-        description: c.description ?? undefined,
-        thumbnail_path: c.thumbnailPath ?? undefined,
-        display_order: c.displayOrder ?? undefined,
-      }));
-      res.json(list);
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  }
-
   async getTags(req: Request, res: Response): Promise<void> {
     try {
       const repo = AppDataSource.getRepository(QuizTag);
