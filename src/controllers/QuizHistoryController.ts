@@ -30,21 +30,30 @@ export class QuizHistoryController {
       for (const a of answers) {
         if (!a.quizId || !a.categoryId || a.isCorrect == null || !a.answeredAt) continue
 
+        // MySQLのdatetime型は秒単位のためミリ秒を切り捨てて比較
         const answeredAt = new Date(a.answeredAt)
+        answeredAt.setMilliseconds(0)
+
         const exists = await repo.findOne({
           where: { userId, quizId: a.quizId, answeredAt },
         })
         if (exists) continue
 
-        const record = repo.create({
-          userId,
-          quizId: a.quizId,
-          categoryId: a.categoryId,
-          isCorrect: a.isCorrect,
-          answeredAt,
-        })
-        await repo.save(record)
-        synced++
+        try {
+          const record = repo.create({
+            userId,
+            quizId: a.quizId,
+            categoryId: a.categoryId,
+            isCorrect: a.isCorrect,
+            answeredAt,
+          })
+          await repo.save(record)
+          synced++
+        } catch (err: unknown) {
+          // 一意制約違反（レース条件等）は無視して次へ
+          if ((err as { code?: string }).code === 'ER_DUP_ENTRY') continue
+          throw err
+        }
       }
 
       res.json({ synced })
@@ -69,15 +78,21 @@ export class QuizHistoryController {
       }
 
       const repo = AppDataSource.getRepository(QuizAnswer)
-      const record = repo.create({
-        userId,
-        quizId,
-        categoryId,
-        isCorrect,
-        answeredAt: new Date(answeredAt),
-      })
-      await repo.save(record)
-      res.status(201).json({ id: record.id })
+      // MySQLのdatetime型は秒単位のためミリ秒を切り捨て
+      const dt = new Date(answeredAt)
+      dt.setMilliseconds(0)
+
+      try {
+        const record = repo.create({ userId, quizId, categoryId, isCorrect, answeredAt: dt })
+        await repo.save(record)
+        res.status(201).json({ id: record.id })
+      } catch (err: unknown) {
+        if ((err as { code?: string }).code === 'ER_DUP_ENTRY') {
+          res.status(200).json({ message: 'already exists' })
+          return
+        }
+        throw err
+      }
     } catch (error) {
       console.error(error)
       res.status(500).json({ error: 'Internal server error' })
