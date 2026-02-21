@@ -2,6 +2,10 @@
 //   - QuizTagController.ts      : getTags / createTag / updateTag / deleteTag
 //   - QuizController.ts         : getQuizzesByCategory / getQuizDetail / createQuiz / updateQuiz / deleteQuiz
 
+// TODO: quiz_tag が quiz_tagging から参照中の場合は削除せず 409 を返す
+// ER_ROW_IS_REFERENCED_2 を捕捉して「使用中タグのため削除不可」の業務エラーとして扱う
+// 500 は想定外エラーのみ返すようにし、削除可否判定を事前チェックまたは例外ハンドリングで明確化する
+
 import { Request, Response } from "express";
 import { AppDataSource } from "../datasource";
 import { QuizCategory } from "../entities/QuizCategory";

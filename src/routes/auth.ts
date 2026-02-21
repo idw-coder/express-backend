@@ -95,4 +95,65 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
   }
 })
 
+// ログインユーザーの情報を更新する
+router.patch('/me', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { name, email, currentPassword, newPassword } = req.body
+
+    const userRepo = AppDataSource.getRepository(User)
+    const user = await userRepo.findOne({ where: { id: req.user!.userId } })
+
+    if (!user) {
+      res.status(404).json({ error: 'ユーザーが見つかりません' })
+      return
+    }
+
+    if (name !== undefined) {
+      if (!name.trim()) {
+        res.status(400).json({ error: '名前を入力してください' })
+        return
+      }
+      user.name = name.trim()
+    }
+
+    if (email !== undefined) {
+      if (!email.trim()) {
+        res.status(400).json({ error: 'メールアドレスを入力してください' })
+        return
+      }
+      const existing = await userRepo.findOne({ where: { email: email.trim() } })
+      if (existing && existing.id !== user.id) {
+        res.status(409).json({ error: 'このメールアドレスはすでに使用されています' })
+        return
+      }
+      user.email = email.trim()
+    }
+
+    if (newPassword !== undefined) {
+      if (!currentPassword) {
+        res.status(400).json({ error: '現在のパスワードを入力してください' })
+        return
+      }
+      const isValid = await bcrypt.compare(currentPassword, user.password)
+      if (!isValid) {
+        res.status(401).json({ error: '現在のパスワードが正しくありません' })
+        return
+      }
+      if (newPassword.length < 6) {
+        res.status(400).json({ error: '新しいパスワードは6文字以上で入力してください' })
+        return
+      }
+      user.password = await bcrypt.hash(newPassword, 10)
+    }
+
+    await userRepo.save(user)
+
+    const { password: _, ...userWithoutPassword } = user
+    res.json({ user: userWithoutPassword })
+  } catch (error) {
+    console.error('Update me error:', error)
+    res.status(500).json({ error: 'サーバーエラーが発生しました' })
+  }
+})
+
 export default router
