@@ -7,6 +7,7 @@ import { Quiz } from './entities/Quiz'
 import { QuizChoice } from './entities/QuizChoice'
 import { QuizTag } from './entities/QuizTag'
 import { QuizTagging } from './entities/QuizTagging'
+import { QuizAnswer } from './entities/QuizAnswer'
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
@@ -19,7 +20,7 @@ export const AppDataSource = new DataSource({
   // DB_SYNCHRONIZE=true のときのみ true（未設定時は false。本番では必ず false にすること）
   synchronize: process.env.NODE_ENV === 'development' ? true : false,
   logging: process.env.NODE_ENV === 'development' ? ['error'] : false,
-  entities: [User, UserMeta, Note, QuizCategory, Quiz, QuizChoice, QuizTag, QuizTagging],
+  entities: [User, UserMeta, Note, QuizCategory, Quiz, QuizChoice, QuizTag, QuizTagging, QuizAnswer],
   migrations: ['src/migrations/**/*.ts'],
   subscribers: [],
 })  
