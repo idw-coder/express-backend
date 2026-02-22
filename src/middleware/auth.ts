@@ -14,6 +14,14 @@ declare global {
   }
 }
 
+export const adminMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  if (req.user?.role !== 'admin') {
+    res.status(403).json({ error: '管理者権限が必要です' })
+    return
+  }
+  next()
+}
+
 export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization

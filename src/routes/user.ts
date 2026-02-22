@@ -3,8 +3,33 @@ import { AppDataSource } from "../datasource";
 import { User } from "../entities/User";
 import { UserMeta } from "../entities/UserMeta";
 import bcrypt from "bcrypt";
+import { authMiddleware, adminMiddleware } from "../middleware/auth";
 
 const router = Router();
+
+router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const userRepository = AppDataSource.getRepository(User);
+    const userMetaRepository = AppDataSource.getRepository(UserMeta);
+
+    const users = await userRepository.find();
+
+    const usersWithRole = await Promise.all(
+      users.map(async (user) => {
+        const roleMeta = await userMetaRepository.findOne({
+          where: { userId: user.id, metaKey: "role" },
+        });
+        const { password: _, ...userWithoutPassword } = user;
+        return { ...userWithoutPassword, role: roleMeta?.metaValue || "user" };
+      })
+    );
+
+    res.json({ users: usersWithRole });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 /**
  * ロールはデフォルトで"user"になる

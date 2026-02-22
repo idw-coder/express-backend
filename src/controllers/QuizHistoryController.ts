@@ -34,10 +34,8 @@ export class QuizHistoryController {
         const answeredAt = new Date(a.answeredAt)
         answeredAt.setMilliseconds(0)
 
-        const exists = await repo.findOne({
-          where: { userId, quizId: a.quizId, answeredAt },
-        })
-        if (exists) continue
+        // 同一ユーザー・問題・回答日時の重複レコードはスキップ
+        if (await repo.findOne({ where: { userId, quizId: a.quizId, answeredAt } })) continue
 
         try {
           const record = repo.create({
