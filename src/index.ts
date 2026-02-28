@@ -9,6 +9,7 @@ import noteRouter from "./routes/note";
 import uploadRouter from "./routes/upload";
 import quizRouter from "./routes/quiz";
 import cors from "cors";
+import passport from 'passport'
 
 const app = express();
 app.set("view engine", "ejs");
@@ -27,6 +28,8 @@ app.use(cors({
   origin: ['http://localhost:5173', 'http://localhost:3000'],
   credentials: true, // Cookie方式に切り替える際に必要
 }))
+
+app.use(passport.initialize())
 
 app.use(express.json());
 // app.use(jsonCharsetMiddleware); // 文字化け検証用に一時無効化

@@ -5,6 +5,9 @@ import { AppDataSource } from '../datasource'
 import { User } from '../entities/User'
 import { UserMeta } from '../entities/UserMeta'
 import { authMiddleware } from '../middleware/auth'
+import passport from 'passport'
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
+
 
 const router = Router()
 
@@ -155,5 +158,84 @@ router.patch('/me', authMiddleware, async (req: Request, res: Response) => {
     res.status(500).json({ error: 'サーバーエラーが発生しました' })
   }
 })
+
+passport.use(new GoogleStrategy(
+  {
+    clientID: process.env.GOOGLE_CLIENT_ID!,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    callbackURL: process.env.GOOGLE_CALLBACK_URL!,
+  },
+  async (_accessToken, _refreshToken, profile, done) => {
+    try {
+      const userRepo = AppDataSource.getRepository(User)
+      const userMetaRepo = AppDataSource.getRepository(UserMeta)
+
+      const email = profile.emails?.[0]?.value
+      if (!email) return done(new Error('Googleアカウントにメールアドレスがありません'))
+
+      // 既存ユーザーをgoogleIdで検索
+      let user = await userRepo.findOne({ where: { googleId: profile.id } })
+
+      if (!user) {
+        // メールアドレスで既存ユーザーを検索（通常登録済みの場合は連携）
+        user = await userRepo.findOne({ where: { email } })
+      }
+
+      if (!user) {
+        // 新規ユーザー作成
+        user = userRepo.create({
+          name: profile.displayName,
+          email,
+          googleId: profile.id,
+          password: null as any,
+        })
+        await userRepo.save(user)
+
+        const userMeta = userMetaRepo.create({
+          userId: user.id,
+          metaKey: 'role',
+          metaValue: 'user',
+        })
+        await userMetaRepo.save(userMeta)
+      } else if (!user.googleId) {
+        // 既存ユーザーにgoogleIdを紐付け
+        user.googleId = profile.id
+        await userRepo.save(user)
+      }
+
+      return done(null, user)
+    } catch (err) {
+      return done(err as Error)
+    }
+  }
+))
+
+// Googleログイン開始
+router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'], session: false }))
+
+// Googleコールバック
+router.get('/google/callback',
+  passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=google` }),
+  async (req: Request, res: Response) => {
+    try {
+      const user = req.user as unknown as User
+      const metaRepo = AppDataSource.getRepository(UserMeta)
+      const roleMeta = await metaRepo.findOne({ where: { userId: user.id, metaKey: 'role' } })
+      const role = roleMeta?.metaValue || 'user'
+
+      const token = jwt.sign(
+        { userId: user.id, email: user.email, role },
+        process.env.JWT_SECRET || 'your-super-secret-key',
+        { expiresIn: '7d' }
+      )
+
+      // JWTをクエリパラメータでフロントに渡す
+      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`)
+    } catch (error) {
+      res.redirect(`${process.env.FRONTEND_URL}/login?error=google`)
+    }
+  }
+)
+
 
 export default router
