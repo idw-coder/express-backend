@@ -20,7 +20,7 @@ export class QuizChoice {
   @Column({ type: 'text', name: 'choice_text' })
   choiceText!: string
 
-  @Column({ type: 'tinyint', width: 1, name: 'is_correct' })
+  @Column({ type: 'tinyint', name: 'is_correct' })
   isCorrect!: boolean
 
   @Column({ type: 'int', nullable: true, name: 'display_order' })
