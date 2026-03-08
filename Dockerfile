@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package*.json ./
 
-# 開発ステージ
+# 開発ステージ TODO
 FROM base AS dev
 RUN npm install
 COPY . .

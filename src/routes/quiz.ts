@@ -4,13 +4,18 @@ import { requireRole } from '../middleware/requireRole'
 import { QuizController } from '../controllers/QuizController'
 import { QuizCategoryController } from '../controllers/QuizCategoryController'
 import { QuizHistoryController } from '../controllers/QuizHistoryController'
+import { QuizCsvController } from '../controllers/QuizCsvController'
 
 const router = Router()
 const controller = new QuizController()
 const categoryController = new QuizCategoryController()
 const historyController = new QuizHistoryController()
+const csvController = new QuizCsvController()
 
 router.get('/categories', (req, res) => categoryController.getCategories(req, res))
+router.post('/categories', authMiddleware, (req, res) => categoryController.createCategory(req, res))
+router.put('/categories/:id', authMiddleware, (req, res) => categoryController.updateCategory(req, res))
+router.delete('/categories/:id', authMiddleware, (req, res) => categoryController.deleteCategory(req, res))
 router.get('/tags', (req, res) => controller.getTags(req, res))
 router.post('/tags', authMiddleware, (req, res) => controller.createTag(req, res))
 router.put('/tags/:tagId', authMiddleware, (req, res) => controller.updateTag(req, res))
@@ -21,6 +26,9 @@ router.get('/category/:categoryId/quizzes', (req, res) =>
 router.get('/category/:categoryId/tags', (req, res) =>
   controller.getTagsByCategory(req, res)
 )
+router.get('/csv/sample', (req, res) => csvController.sampleCsv(req, res))
+router.get('/csv/export', authMiddleware, (req, res) => csvController.exportCsv(req, res))
+router.post('/csv/import', authMiddleware, (req, res) => csvController.importCsv(req, res))
 router.get('/history', authMiddleware, (req, res) => historyController.getHistory(req, res))
 router.post('/history', authMiddleware, (req, res) => historyController.addAnswer(req, res))
 router.post('/history/sync', authMiddleware, (req, res) => historyController.syncHistory(req, res))
