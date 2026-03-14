@@ -10,6 +10,8 @@ import uploadRouter from "./routes/upload";
 import quizRouter from "./routes/quiz";
 import cors from "cors";
 import passport from 'passport'
+import swaggerUi from 'swagger-ui-express'
+import { swaggerSpec } from './swagger'
 
 const app = express();
 app.set("view engine", "ejs");
@@ -33,6 +35,15 @@ app.use(passport.initialize())
 
 app.use(express.json());
 // app.use(jsonCharsetMiddleware); // 文字化け検証用に一時無効化
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customSiteTitle: 'Express MySQL Docker API',
+}));
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
 app.use('/api/users', userRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/notes', noteRouter);
