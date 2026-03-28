@@ -21,6 +21,6 @@ export const AppDataSource = new DataSource({
   synchronize: false,
   logging: process.env.NODE_ENV === 'development' ? ['error'] : false,
   entities: [User, UserMeta, Note, QuizCategory, Quiz, QuizChoice, QuizTag, QuizTagging, QuizAnswer, Payment],
-  migrations: ['src/migrations/**/*.ts'], // マイグレーションファイルを作成したい、DB差分 → 
+  migrations: [__dirname + '/migrations/**/*.{js,ts}'],
   subscribers: [],
 })  
