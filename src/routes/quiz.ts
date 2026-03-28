@@ -207,7 +207,8 @@ router.post('/tags', authMiddleware, (req, res) => controller.createTag(req, res
  *   put:
  *     tags: [Quiz - タグ]
  *     summary: タグ更新
- *     description: 指定IDのクイズタグを更新します。Bearer認証が必要です。
+ *     description: 指定IDのクイズタグを更新します。Bearer認証が必要ですeeee
+ * 
  *     security:
  *       - bearerAuth: []
  *     parameters:

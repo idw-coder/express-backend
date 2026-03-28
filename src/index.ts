@@ -8,6 +8,8 @@ import authRouter from "./routes/auth";
 import noteRouter from "./routes/note";
 import uploadRouter from "./routes/upload";
 import quizRouter from "./routes/quiz";
+import paymentRouter from "./routes/payment";
+import stripeWebhookRouter from "./routes/stripe-webhook";
 import cors from "cors";
 import passport from 'passport'
 import swaggerUi from 'swagger-ui-express'
@@ -33,8 +35,10 @@ app.use(cors({
 
 app.use(passport.initialize())
 
+// Stripe Webhook は raw body が必要なため、express.json() より前に登録
+app.use('/api/webhook', express.raw({ type: 'application/json' }), stripeWebhookRouter);
+
 app.use(express.json());
-// app.use(jsonCharsetMiddleware); // 文字化け検証用に一時無効化
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'Express MySQL Docker API',
@@ -49,6 +53,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/notes', noteRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/quiz', quizRouter);
+app.use('/api/payment', paymentRouter);
 
 // アップロードファイルの静的配信
 app.use('/uploads', express.static(path.join(process.cwd(), "uploads")));

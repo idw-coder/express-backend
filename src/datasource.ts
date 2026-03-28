@@ -8,6 +8,7 @@ import { QuizChoice } from './entities/QuizChoice'
 import { QuizTag } from './entities/QuizTag'
 import { QuizTagging } from './entities/QuizTagging'
 import { QuizAnswer } from './entities/QuizAnswer'
+import { Payment } from './entities/Payment'
 
 export const AppDataSource = new DataSource({
   type: 'mysql',
@@ -19,7 +20,7 @@ export const AppDataSource = new DataSource({
   charset: 'utf8mb4',
   synchronize: false,
   logging: process.env.NODE_ENV === 'development' ? ['error'] : false,
-  entities: [User, UserMeta, Note, QuizCategory, Quiz, QuizChoice, QuizTag, QuizTagging, QuizAnswer],
+  entities: [User, UserMeta, Note, QuizCategory, Quiz, QuizChoice, QuizTag, QuizTagging, QuizAnswer, Payment],
   migrations: ['src/migrations/**/*.ts'], // マイグレーションファイルを作成したい、DB差分 → 
   subscribers: [],
 })  

@@ -27,6 +27,12 @@ export class User {
   @Column({ type: "varchar", length: 255, nullable: true, unique: true })
   googleId?: string;
 
+  @Column({ type: 'boolean', default: false })
+  emailVerified!: boolean;
+
+  @Column({ type: "varchar", length: 255, nullable: true, unique: true })
+  stripeCustomerId?: string;
+
   @CreateDateColumn({ type: "datetime" })
   createdAt!: Date;
 

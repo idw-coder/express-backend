@@ -7,6 +7,7 @@ import { UserMeta } from '../entities/UserMeta'
 import { authMiddleware } from '../middleware/auth'
 import passport from 'passport'
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
+// import { sendVerificationEmail } from '../utils/verification'
 
 
 const router = Router()
@@ -91,6 +92,11 @@ router.post('/login', async (req: Request, res: Response) => {
       res.status(401).json({ error: 'メールアドレスまたはパスワードが正しくありません' })
       return
     }
+
+    // if (!user.emailVerified) {
+    //   res.status(403).json({ error: 'メールアドレスが確認されていません。登録時に送信された確認メールをご確認ください。' })
+    //   return
+    // }
 
     const metaRepo = AppDataSource.getRepository(UserMeta)
     const roleMeta = await metaRepo.findOne({
@@ -333,6 +339,7 @@ passport.use(new GoogleStrategy(
           email,
           googleId: profile.id,
           password: null as any,
+          emailVerified: true,
         })
         await userRepo.save(user)
 
@@ -345,6 +352,7 @@ passport.use(new GoogleStrategy(
       } else if (!user.googleId) {
         // 既存ユーザーにgoogleIdを紐付け
         user.googleId = profile.id
+        user.emailVerified = true
         await userRepo.save(user)
       }
 
@@ -354,6 +362,78 @@ passport.use(new GoogleStrategy(
     }
   }
 ))
+
+// router.get('/verify-email', async (req: Request, res: Response) => {
+//   try {
+//     const { token } = req.query
+//
+//     if (!token || typeof token !== 'string') {
+//       res.status(400).json({ error: 'トークンが必要です' })
+//       return
+//     }
+//
+//     const userMetaRepo = AppDataSource.getRepository(UserMeta)
+//     const userRepo = AppDataSource.getRepository(User)
+//
+//     const tokenMeta = await userMetaRepo.findOne({
+//       where: { metaKey: 'emailVerificationToken', metaValue: token }
+//     })
+//
+//     if (!tokenMeta) {
+//       res.status(400).json({ error: '無効なトークンです' })
+//       return
+//     }
+//
+//     const expiresMeta = await userMetaRepo.findOne({
+//       where: { userId: tokenMeta.userId, metaKey: 'emailVerificationExpires' }
+//     })
+//
+//     if (!expiresMeta || new Date(expiresMeta.metaValue!) < new Date()) {
+//       res.status(400).json({ error: 'トークンの有効期限が切れています' })
+//       return
+//     }
+//
+//     const user = await userRepo.findOne({ where: { id: tokenMeta.userId } })
+//     if (!user) {
+//       res.status(404).json({ error: 'ユーザーが見つかりません' })
+//       return
+//     }
+//
+//     user.emailVerified = true
+//     await userRepo.save(user)
+//
+//     await userMetaRepo.remove([tokenMeta, expiresMeta!])
+//
+//     res.json({ message: 'メールアドレスの確認が完了しました' })
+//   } catch (error) {
+//     console.error('Verify email error:', error)
+//     res.status(500).json({ error: 'サーバーエラーが発生しました' })
+//   }
+// })
+
+// router.post('/send-verification', authMiddleware, async (req: Request, res: Response) => {
+//   try {
+//     const userRepo = AppDataSource.getRepository(User)
+//     const user = await userRepo.findOne({ where: { id: req.user!.userId } })
+//
+//     if (!user) {
+//       res.status(404).json({ error: 'ユーザーが見つかりません' })
+//       return
+//     }
+//
+//     if (user.emailVerified) {
+//       res.status(400).json({ error: 'すでにメール確認済みです' })
+//       return
+//     }
+//
+//     await sendVerificationEmail(user.id, user.email)
+//
+//     res.json({ message: '確認メールを再送しました' })
+//   } catch (error) {
+//     console.error('Send verification error:', error)
+//     res.status(500).json({ error: 'サーバーエラーが発生しました' })
+//   }
+// })
 
 /**
  * @openapi

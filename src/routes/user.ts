@@ -1,9 +1,10 @@
-import { Router } from "express";
-import { AppDataSource } from "../datasource";
-import { User } from "../entities/User";
-import { UserMeta } from "../entities/UserMeta";
-import bcrypt from "bcrypt";
-import { authMiddleware, adminMiddleware } from "../middleware/auth";
+import { Router } from 'express';
+import { AppDataSource } from '../datasource';
+import { User } from '../entities/User';
+import { UserMeta } from '../entities/UserMeta';
+import bcrypt from 'bcrypt';
+import { authMiddleware, adminMiddleware } from '../middleware/auth';
+// import { sendVerificationEmail } from '../utils/verification';
 
 const router = Router();
 
@@ -36,7 +37,7 @@ const router = Router();
  *                       createdAt: { type: string, format: date-time }
  *                       updatedAt: { type: string, format: date-time }
  */
-router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
+router.get('/', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const userRepository = AppDataSource.getRepository(User);
     const userMetaRepository = AppDataSource.getRepository(UserMeta);
@@ -46,17 +47,17 @@ router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
     const usersWithRole = await Promise.all(
       users.map(async (user) => {
         const roleMeta = await userMetaRepository.findOne({
-          where: { userId: user.id, metaKey: "role" },
+          where: { userId: user.id, metaKey: 'role' },
         });
         const { password: _, ...userWithoutPassword } = user;
-        return { ...userWithoutPassword, role: roleMeta?.metaValue || "user" };
-      })
+        return { ...userWithoutPassword, role: roleMeta?.metaValue || 'user' };
+      }),
     );
 
     res.json({ users: usersWithRole });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -104,6 +105,7 @@ router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
  *                 role:
  *                   type: string
  *                   example: "user"
+ *                   emailVerified: false
  *       400:
  *         description: 必須パラメータ不足
  *         content:
@@ -121,20 +123,18 @@ router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
  *             example:
  *               error: "User already exists"
  */
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
-      return res
-        .status(400)
-        .json({ error: "Name, email, and password are required" });
+      return res.status(400).json({ error: 'Name, email, and password are required' });
     }
     const userRepository = AppDataSource.getRepository(User);
     const userMetaRepository = AppDataSource.getRepository(UserMeta);
 
     const existingUser = await userRepository.findOne({ where: { email } });
     if (existingUser) {
-      return res.status(409).json({ error: "User already exists" });
+      return res.status(409).json({ error: 'User already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -146,21 +146,28 @@ router.post("/", async (req, res) => {
     });
     await userRepository.save(user);
 
+    // try {
+    //   await sendVerificationEmail(user.id, user.email);
+    // } catch (mailError) {
+    //   console.error('Verification email failed:', mailError);
+    // }
+
     const userMeta = userMetaRepository.create({
       userId: user.id,
-      metaKey: "role",
-      metaValue: "user",
+      metaKey: 'role',
+      metaValue: 'user',
     });
     await userMetaRepository.save(userMeta);
 
     const { password: _, ...userWithoutPassword } = user;
     res.status(201).json({
-        user: userWithoutPassword,
-        role: "user",
+      user: userWithoutPassword,
+      role: 'user',
+      emailVerified: false,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
