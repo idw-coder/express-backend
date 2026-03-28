@@ -7,9 +7,7 @@ import { authMiddleware } from '../middleware/auth'
 
 const router = Router()
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-02-25.clover' as any, // バージョンを固定しないと、SDK アップデート時に挙動が変わるリスクがある
-})
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 /**
  * Stripe が管理する「顧客オブジェクト」。

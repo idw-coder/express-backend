@@ -6,9 +6,7 @@ import { User } from '../entities/User'
 
 const router = Router()
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2026-02-25.clover' as any,
-})
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
 /**
  * @openapi
@@ -110,26 +108,17 @@ router.post('/stripe', async (req: Request, res: Response) => {
       }
 
       // 2回目以降の定期課金を Payment に記録
-      // Stripe API 2026-02-25.clover 以降、invoice.subscription は廃止された。
-      // サブスクリプション ID は invoice.parent.subscription_details.subscription に移動している。
-      const subscriptionId = invoice.parent?.subscription_details?.subscription
-      if (subscriptionId && invoice.customer) {
+      if (invoice.subscription && invoice.customer) {
         const userRepo = AppDataSource.getRepository(User)
         const user = await userRepo.findOne({
           where: { stripeCustomerId: invoice.customer as string },
         })
 
         if (user) {
-          // Stripe API 2026-02-25.clover 以降、invoice.payment_intent は廃止された。
-          // PaymentIntent ID は confirmation_secret.client_secret の "_secret_" より前の部分から取得できる。
-          // 例: "pi_abc123_secret_xyz" → "pi_abc123"
-          const clientSecret = invoice.confirmation_secret?.client_secret
-          const paymentIntentId = clientSecret?.split('_secret_')[0]
-
           const payment = paymentRepo.create({
             userId: user.id,
             stripeSessionId: `inv_${invoice.id}`,
-            ...(paymentIntentId ? { stripePaymentIntentId: paymentIntentId } : {}),
+            stripePaymentIntentId: (invoice.payment_intent as string) ?? undefined,
             status: 'completed',
             amount: invoice.amount_paid ?? 0,
             currency: invoice.currency ?? 'jpy',
