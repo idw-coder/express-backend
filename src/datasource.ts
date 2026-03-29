@@ -18,6 +18,7 @@ export const AppDataSource = new DataSource({
   password: process.env.DB_PASSWORD || 'rootpassword',
   database: process.env.DB_NAME || 'myapp',
   charset: 'utf8mb4',
+  timezone: '+09:00',
   synchronize: false,
   logging: process.env.NODE_ENV === 'development' ? ['error'] : false,
   entities: [User, UserMeta, Note, QuizCategory, Quiz, QuizChoice, QuizTag, QuizTagging, QuizAnswer, Payment],

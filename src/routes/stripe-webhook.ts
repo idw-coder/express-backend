@@ -1,3 +1,4 @@
+// TODO: stripe@17.7.0（古いバージョン）で実装しているため、将来的に最新の安定版へアップグレードすること
 import { Router, Request, Response } from 'express'
 import Stripe from 'stripe'
 import { AppDataSource } from '../datasource'
@@ -41,6 +42,7 @@ router.post('/stripe', async (req: Request, res: Response) => {
   const paymentRepo = AppDataSource.getRepository(Payment)
 
   switch (event.type) {
+    // チェックアウト完了 → Payment を completed に更新
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
 
@@ -60,6 +62,7 @@ router.post('/stripe', async (req: Request, res: Response) => {
       break
     }
 
+    // チェックアウト期限切れ → Payment を expired に更新
     case 'checkout.session.expired': {
       const session = event.data.object as Stripe.Checkout.Session
 
@@ -76,6 +79,7 @@ router.post('/stripe', async (req: Request, res: Response) => {
       break
     }
 
+    // 決済失敗 → Payment を failed に更新
     case 'payment_intent.payment_failed': {
       const paymentIntent = event.data.object as Stripe.PaymentIntent
 
@@ -92,12 +96,15 @@ router.post('/stripe', async (req: Request, res: Response) => {
       break
     }
 
+    // サブスクリプションキャンセル → ログ記録のみ
     case 'customer.subscription.deleted': {
       const subscription = event.data.object as Stripe.Subscription
       console.log(`Subscription cancelled: ${subscription.id}`)
       break
     }
 
+    // ※ Invoice = Stripe がサブスクの課金サイクルごとに自動生成する請求オブジェクト
+    // サブスク定期課金の成功 → 2回目以降の更新分を Payment として新規作成
     case 'invoice.payment_succeeded': {
       const invoice = event.data.object as Stripe.Invoice
 
@@ -122,7 +129,7 @@ router.post('/stripe', async (req: Request, res: Response) => {
             status: 'completed',
             amount: invoice.amount_paid ?? 0,
             currency: invoice.currency ?? 'jpy',
-            description: 'subscription_renewal',
+            description: 'subscription_renewal', // 決済の補足説明
           })
           await paymentRepo.save(payment)
         }
@@ -132,6 +139,7 @@ router.post('/stripe', async (req: Request, res: Response) => {
       break
     }
 
+    // サブスク定期課金の失敗 → ログ記録のみ（将来的な処理追加想定）
     case 'invoice.payment_failed': {
       const invoice = event.data.object as Stripe.Invoice
       console.log(`Invoice payment failed: ${invoice.id}`)
