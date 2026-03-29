@@ -16,6 +16,9 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 async function getOrCreateStripeCustomer(user: User): Promise<string> {
   // すでに Stripe Customer が作成済みであればその ID をそのまま返す（重複作成を防ぐ）
   if (user.stripeCustomerId) {
+    // const existingCustomer = await stripe.customers.retrieve(user.stripeCustomerId)
+    // console.log(existingCustomer) 
+
     return user.stripeCustomerId
   }
 

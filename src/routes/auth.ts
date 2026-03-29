@@ -482,5 +482,35 @@ router.get('/google/callback',
   }
 )
 
+// テストメール送信
+router.post('/test-mail', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const { to } = req.body
+    if (!to) {
+      res.status(400).json({ error: '送信先メールアドレスが必要です' })
+      return
+    }
+
+    const nodemailer = require('nodemailer')
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'mailserver',
+      port: parseInt(process.env.SMTP_PORT || '25'),
+      secure: false,
+      tls: { rejectUnauthorized: false },
+    })
+
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_FROM || 'noreply@ntorelabo.com',
+      to,
+      subject: 'テスト送信',
+      text: 'Postfixからのテストメールです。',
+    })
+
+    res.json({ message: 'メール送信成功', messageId: info.messageId })
+  } catch (error: any) {
+    console.error('Test mail error:', error)
+    res.status(500).json({ error: error.message })
+  }
+})
 
 export default router
