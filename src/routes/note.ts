@@ -6,23 +6,6 @@ import { authMiddleware } from '../middleware/auth'
 
 const router = Router()
 
-/**
- * @openapi
- * /notes:
- *   get:
- *     tags: [Notes]
- *     summary: ノート一覧取得
- *     description: 全ノートを updatedAt の降順で取得します。認証不要です。test
- *     responses:
- *       200:
- *         description: ノート一覧
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Note'
- */
 router.get('/', async (req: Request, res: Response) => {
   try {
     const noteRepo = AppDataSource.getRepository(Note)
@@ -36,36 +19,6 @@ router.get('/', async (req: Request, res: Response) => {
   }
 })
 
-/**
- * @openapi
- * /notes/{id}:
- *   get:
- *     tags: [Notes]
- *     summary: ノート詳細取得
- *     description: 指定IDのノートを1件取得します。認証不要です。
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ノートID
- *     responses:
- *       200:
- *         description: ノート詳細
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Note'
- *       404:
- *         description: ノートが見つかりません
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               error: Note not found
- */
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const noteRepo = AppDataSource.getRepository(Note)
@@ -144,45 +97,6 @@ router.get('/:id', async (req: Request, res: Response) => {
 //   }
 // })
 
-/**
- * @openapi
- * /notes:
- *   post:
- *     tags: [Notes]
- *     summary: ノート作成
- *     description: 新規ノートを作成します。Bearer認証が必要です。
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [title]
- *             properties:
- *               title:
- *                 type: string
- *                 description: タイトル
- *               content:
- *                 type: string
- *                 description: 本文（任意）
- *     responses:
- *       201:
- *         description: ノート作成成功
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Note'
- *       400:
- *         description: タイトルが未入力
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               error: Title is required
- */
 router.post('/', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { title, content } = req.body
@@ -207,50 +121,6 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
   }
 })
 
-/**
- * @openapi
- * /notes/{id}:
- *   put:
- *     tags: [Notes]
- *     summary: ノート更新
- *     description: 指定IDのノートを更新します。Bearer認証が必要です。
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ノートID
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               title:
- *                 type: string
- *                 description: タイトル（任意）
- *               content:
- *                 type: string
- *                 description: 本文（任意）
- *     responses:
- *       200:
- *         description: ノート更新成功
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Note'
- *       404:
- *         description: ノートが見つかりません
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               error: Note not found
- */
 router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const noteRepo = AppDataSource.getRepository(Note)
@@ -275,42 +145,6 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
   }
 })
 
-/**
- * @openapi
- * /notes/{id}:
- *   delete:
- *     tags: [Notes]
- *     summary: ノート削除
- *     description: 指定IDのノートを削除します（ソフトデリート）。Bearer認証が必要です。
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *         description: ノートID
- *     responses:
- *       200:
- *         description: ノート削除成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: Note deleted
- *       404:
- *         description: ノートが見つかりません
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               error: Note not found
- */
 router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const noteRepo = AppDataSource.getRepository(Note)

@@ -1,7 +1,8 @@
 import nodemailer from 'nodemailer'
 
+// SMTPでmailserverコンテナを使用
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'mailserver',
+  host: process.env.SMTP_HOST || 'mailserver', // TODO ホストがおかしい？
   port: parseInt(process.env.SMTP_PORT || '25'),
   secure: false,
   tls: {

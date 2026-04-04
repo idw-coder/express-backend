@@ -40,43 +40,6 @@ async function getOrCreateStripeCustomer(user: User): Promise<string> {
   return customer.id
 }
 
-/**
- * @openapi
- * /payment/checkout:
- *   post:
- *     tags: [Payment]
- *     summary: Stripe Checkout Session を作成
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [priceId]
- *             properties:
- *               priceId:
- *                 type: string
- *                 description: Stripe Price ID
- *               quantity:
- *                 type: integer
- *                 default: 1
- *     responses:
- *       200:
- *         description: Checkout Session URL を返却
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 url:
- *                   type: string
- *                 sessionId:
- *                   type: string
- *       400:
- *         description: パラメータ不正
- */
 router.post('/checkout', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { priceId, quantity = 1 } = req.body
@@ -130,29 +93,6 @@ router.post('/checkout', authMiddleware, async (req: Request, res: Response) => 
   }
 })
 
-/**
- * @openapi
- * /payment/subscription:
- *   post:
- *     tags: [Payment]
- *     summary: サブスクリプション用 Checkout Session を作成
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [priceId]
- *             properties:
- *               priceId:
- *                 type: string
- *                 description: Stripe Price ID（recurring）
- *     responses:
- *       200:
- *         description: Checkout Session URL を返却
- */
 router.post('/subscription', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { priceId } = req.body
@@ -207,18 +147,6 @@ router.post('/subscription', authMiddleware, async (req: Request, res: Response)
   }
 })
 
-/**
- * @openapi
- * /payment/portal:
- *   post:
- *     tags: [Payment]
- *     summary: Stripe Customer Portal セッションを作成
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Customer Portal URL を返却
- */
 router.post('/portal', authMiddleware, async (req: Request, res: Response) => {
   try {
     const userRepo = AppDataSource.getRepository(User)
@@ -246,29 +174,6 @@ router.post('/portal', authMiddleware, async (req: Request, res: Response) => {
   }
 })
 
-/**
- * @openapi
- * /payment/history:
- *   get:
- *     tags: [Payment]
- *     summary: 決済履歴を取得
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 20
- *     responses:
- *       200:
- *         description: 決済履歴一覧
- */
 router.get('/history', authMiddleware, async (req: Request, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1)
@@ -298,24 +203,6 @@ router.get('/history', authMiddleware, async (req: Request, res: Response) => {
   }
 })
 
-/**
- * @openapi
- * /payment/status/{sessionId}:
- *   get:
- *     tags: [Payment]
- *     summary: 決済ステータスを確認
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: sessionId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: 決済ステータス
- */
 router.get('/status/:sessionId', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params as { sessionId: string }

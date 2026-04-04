@@ -12,63 +12,6 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
 
 const router = Router()
 
-/**
- * @openapi
- * /auth/login:
- *   post:
- *     tags: [Auth]
- *     summary: ログイン
- *     description: メールアドレスとパスワードでログインし、JWTトークンを取得します。
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [email, password]
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
- *                 description: メールアドレス
- *               password:
- *                 type: string
- *                 description: パスワード
- *     responses:
- *       200:
- *         description: ログイン成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 token:
- *                   type: string
- *                   description: JWTトークン
- *                 user:
- *                   type: object
- *                   properties:
- *                     id: { type: integer }
- *                     name: { type: string }
- *                     email: { type: string }
- *                     role: { type: string }
- *       400:
- *         description: リクエストパラメータ不正
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               error: メールアドレスとパスワードは必須です
- *       401:
- *         description: 認証失敗
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               error: メールアドレスまたはパスワードが正しくありません
- */
 router.post('/login', async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body
@@ -134,37 +77,6 @@ router.post('/login', async (req: Request, res: Response) => {
   }
 })
 
-/**
- * @openapi
- * /auth/me:
- *   get:
- *     tags: [Auth]
- *     summary: ログインユーザー情報取得
- *     description: 認証済みユーザーの情報を取得します。Bearerトークンが必要です。
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: 取得成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 user:
- *                   $ref: '#/components/schemas/User'
- *                 role:
- *                   type: string
- *                   description: ユーザーロール
- *       404:
- *         description: ユーザーが見つからない
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               error: ユーザーが見つかりません
- */
 router.get('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
     const userRepo = AppDataSource.getRepository(User)
@@ -191,65 +103,6 @@ router.get('/me', authMiddleware, async (req: Request, res: Response) => {
   }
 })
 
-/**
- * @openapi
- * /auth/me:
- *   patch:
- *     tags: [Auth]
- *     summary: ログインユーザー情報更新
- *     description: 認証済みユーザーの情報を更新します。Bearerトークンが必要です。
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *                 description: 名前
- *               email:
- *                 type: string
- *                 format: email
- *                 description: メールアドレス
- *               currentPassword:
- *                 type: string
- *                 description: 現在のパスワード（パスワード変更時のみ必須）
- *               newPassword:
- *                 type: string
- *                 description: 新しいパスワード（6文字以上）
- *     responses:
- *       200:
- *         description: 更新成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 user:
- *                   $ref: '#/components/schemas/User'
- *       400:
- *         description: バリデーションエラー
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       401:
- *         description: 現在のパスワードが正しくない
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *       409:
- *         description: メールアドレス重複
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Error'
- *             example:
- *               error: このメールアドレスはすでに使用されています
- */
 router.patch('/me', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { name, email, currentPassword, newPassword } = req.body
@@ -435,30 +288,8 @@ passport.use(new GoogleStrategy(
 //   }
 // })
 
-/**
- * @openapi
- * /auth/google:
- *   get:
- *     tags: [Auth]
- *     summary: Google OAuth ログイン開始
- *     description: Google OAuth認証を開始し、Googleの認証画面にリダイレクトします。
- *     responses:
- *       302:
- *         description: Google認証画面へリダイレクト
- */
 router.get('/google', passport.authenticate('google', { scope: ['email', 'profile'], session: false }))
 
-/**
- * @openapi
- * /auth/google/callback:
- *   get:
- *     tags: [Auth]
- *     summary: Google OAuth コールバック
- *     description: Google認証完了後のコールバック。JWTトークンをクエリパラメータでフロントエンドにリダイレクトします。
- *     responses:
- *       302:
- *         description: フロントエンドの認証コールバックURLへリダイレクト（tokenクエリ付き）
- */
 router.get('/google/callback',
   passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=google` }),
   async (req: Request, res: Response) => {
@@ -493,11 +324,13 @@ router.post('/test-mail', authMiddleware, async (req: Request, res: Response) =>
 
     const nodemailer = require('nodemailer')
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'mailserver',
+      host: process.env.SMTP_HOST || 'mailserver',  // TODO ホストがおかしい？
       port: parseInt(process.env.SMTP_PORT || '25'),
       secure: false,
       tls: { rejectUnauthorized: false },
     })
+
+    console.log(transporter)
 
     const info = await transporter.sendMail({
       from: process.env.EMAIL_FROM || 'noreply@ntorelabo.com',

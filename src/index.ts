@@ -12,8 +12,7 @@ import paymentRouter from "./routes/payment";
 import stripeWebhookRouter from "./routes/stripe-webhook";
 import cors from "cors";
 import passport from 'passport'
-import swaggerUi from 'swagger-ui-express'
-import { swaggerSpec } from './swagger'
+import fs from 'fs'
 
 const app = express();
 app.set("view engine", "ejs");
@@ -40,12 +39,28 @@ app.use('/api/webhook', express.raw({ type: 'application/json' }), stripeWebhook
 
 app.use(express.json());
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'Express MySQL Docker API',
-}));
+const openapiSpec = JSON.parse(
+  fs.readFileSync(path.join(process.cwd(), 'openapi.json'), 'utf-8')
+);
+
 app.get('/api-docs.json', (req, res) => {
   res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
+  res.send(openapiSpec);
+});
+
+app.get('/api-docs', (req, res) => {
+  res.setHeader('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
+<html><head>
+  <title>Express MySQL Docker API</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css?family=Montserrat:300,400,700|Roboto:300,400,700" rel="stylesheet">
+  <style>body { margin: 0; padding: 0; }</style>
+</head><body>
+  <redoc spec-url="/api-docs.json"></redoc>
+  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+</body></html>`);
 });
 
 app.use('/api/users', userRouter);

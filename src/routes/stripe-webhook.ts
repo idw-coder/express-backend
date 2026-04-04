@@ -9,19 +9,6 @@ const router = Router()
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
-/**
- * @openapi
- * /webhook/stripe:
- *   post:
- *     tags: [Webhook]
- *     summary: Stripe Webhook エンドポイント
- *     description: Stripe からのイベント通知を受け取り、決済ステータスを更新します。
- *     responses:
- *       200:
- *         description: Webhook 処理成功
- *       400:
- *         description: 署名検証失敗
- */
 router.post('/stripe', async (req: Request, res: Response) => {
   const sig = req.headers['stripe-signature'] as string
 
