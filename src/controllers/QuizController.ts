@@ -150,6 +150,89 @@ export class QuizController {
     }
   }
 
+  async searchQuizzes(req: Request, res: Response): Promise<void> {
+    try {
+      const { q, categoryId, tagSlug } = req.query as {
+        q?: string;
+        categoryId?: string;
+        tagSlug?: string;
+      };
+
+      const quizRepo = AppDataSource.getRepository(Quiz);
+      let qb = quizRepo
+        .createQueryBuilder("quiz")
+        .leftJoinAndSelect("quiz.category", "category")
+        .orderBy("quiz.id", "ASC");
+
+      if (categoryId) {
+        const cid = Number(categoryId);
+        if (!Number.isFinite(cid)) {
+          res.status(400).json({ error: "Invalid categoryId" });
+          return;
+        }
+        qb = qb.andWhere("quiz.categoryId = :cid", { cid });
+      }
+
+      if (tagSlug) {
+        qb = qb
+          .innerJoin(QuizTagging, "tagging", "tagging.quiz_id = quiz.id")
+          .innerJoin(
+            QuizTag,
+            "tag",
+            "tag.id = tagging.quiz_tag_id AND tag.slug = :tagSlug",
+            { tagSlug },
+          );
+      }
+
+      if (q) {
+        qb = qb.andWhere(
+          "(quiz.question LIKE :q OR quiz.explanation LIKE :q)",
+          { q: `%${q}%` },
+        );
+      }
+
+      const quizzes = await qb.getMany();
+
+      const quizIds = quizzes.map((quiz) => quiz.id);
+      const taggingRepo = AppDataSource.getRepository(QuizTagging);
+      const taggings =
+        quizIds.length > 0
+          ? await taggingRepo.find({
+              where: quizIds.map((id) => ({ quizId: id })),
+              relations: ["quizTag"],
+            })
+          : [];
+
+      const tagsByQuizId = new Map<
+        number,
+        { id: number; slug: string; name: string }[]
+      >();
+      for (const tagging of taggings) {
+        const existing = tagsByQuizId.get(tagging.quizId) ?? [];
+        existing.push({
+          id: tagging.quizTag.id,
+          slug: tagging.quizTag.slug,
+          name: tagging.quizTag.name,
+        });
+        tagsByQuizId.set(tagging.quizId, existing);
+      }
+
+      const list = quizzes.map((quiz) => ({
+        id: quiz.id,
+        slug: quiz.slug,
+        category_id: quiz.categoryId,
+        category_slug: quiz.category?.slug ?? null,
+        category_name: quiz.category?.categoryName ?? null,
+        question: quiz.question,
+        tags: tagsByQuizId.get(quiz.id) ?? [],
+      }));
+      res.json(list);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
   async getQuizzesByCategory(req: Request, res: Response): Promise<void> {
     try {
       const categoryId = Number(req.params.categoryId);

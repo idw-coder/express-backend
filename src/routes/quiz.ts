@@ -36,6 +36,8 @@ router.get('/category/:categoryId/tags', (req, res) =>
   controller.getTagsByCategory(req, res)
 )
 
+router.get('/search', (req, res) => controller.searchQuizzes(req, res))
+
 router.get('/csv/sample', (req, res) => csvController.sampleCsv(req, res))
 
 router.get('/csv/export', authMiddleware, (req, res) => csvController.exportCsv(req, res))
