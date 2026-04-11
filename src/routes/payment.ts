@@ -1,13 +1,13 @@
-import { Router, Request, Response } from 'express'
-import Stripe from 'stripe'
-import { AppDataSource } from '../datasource'
-import { User } from '../entities/User'
-import { Payment } from '../entities/Payment'
-import { authMiddleware } from '../middleware/auth'
+import { Router, Request, Response } from 'express';
+import Stripe from 'stripe';
+import { AppDataSource } from '../datasource';
+import { User } from '../entities/User';
+import { Payment } from '../entities/Payment';
+import { authMiddleware } from '../middleware/auth';
 
-const router = Router()
+const router = Router();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 /**
  * Stripe が管理する「顧客オブジェクト」。
@@ -17,9 +17,9 @@ async function getOrCreateStripeCustomer(user: User): Promise<string> {
   // すでに Stripe Customer が作成済みであればその ID をそのまま返す（重複作成を防ぐ）
   if (user.stripeCustomerId) {
     // const existingCustomer = await stripe.customers.retrieve(user.stripeCustomerId)
-    // console.log(existingCustomer) 
+    // console.log(existingCustomer)
 
-    return user.stripeCustomerId
+    return user.stripeCustomerId;
   }
 
   /**
@@ -31,33 +31,33 @@ async function getOrCreateStripeCustomer(user: User): Promise<string> {
     email: user.email,
     name: user.name,
     metadata: { userId: String(user.id) },
-  })
+  });
 
-  const userRepo = AppDataSource.getRepository(User)
-  user.stripeCustomerId = customer.id
-  await userRepo.save(user)
+  const userRepo = AppDataSource.getRepository(User);
+  user.stripeCustomerId = customer.id;
+  await userRepo.save(user);
 
-  return customer.id
+  return customer.id;
 }
 
 router.post('/checkout', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { priceId, quantity = 1 } = req.body
+    const { priceId, quantity = 1 } = req.body;
 
     if (!priceId) {
-      res.status(400).json({ error: 'priceId は必須です' })
-      return
+      res.status(400).json({ error: 'priceId は必須です' });
+      return;
     }
 
-    const userRepo = AppDataSource.getRepository(User)
-    const user = await userRepo.findOne({ where: { id: req.user!.userId } })
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: req.user!.userId } });
 
     if (!user) {
-      res.status(404).json({ error: 'ユーザーが見つかりません' })
-      return
+      res.status(404).json({ error: 'ユーザーが見つかりません' });
+      return;
     }
 
-    const customerId = await getOrCreateStripeCustomer(user)
+    const customerId = await getOrCreateStripeCustomer(user);
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -74,43 +74,48 @@ router.post('/checkout', authMiddleware, async (req: Request, res: Response) => 
       metadata: {
         userId: String(user.id),
       },
-    })
+    });
 
-    const paymentRepo = AppDataSource.getRepository(Payment)
+    const paymentRepo = AppDataSource.getRepository(Payment);
     const payment = paymentRepo.create({
       userId: user.id,
       stripeSessionId: session.id,
       status: 'pending',
       amount: 0,
       currency: 'jpy',
-    })
-    await paymentRepo.save(payment)
+    });
+    await paymentRepo.save(payment);
 
-    res.json({ url: session.url, sessionId: session.id })
+    res.json({ url: session.url, sessionId: session.id });
   } catch (error) {
-    console.error('Checkout error:', error)
-    res.status(500).json({ error: '決済セッションの作成に失敗しました' })
+    console.error('Checkout error:', error);
+    res.status(500).json({ error: '決済セッションの作成に失敗しました' });
   }
-})
+});
 
+/**
+ * サブスクリプション用 Checkout Session を作成
+ * @param req.body.priceId - Stripe Price ID（recurring）
+ * @returns {Promise<void>}
+ */
 router.post('/subscription', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { priceId } = req.body
+    const { priceId } = req.body;
 
     if (!priceId) {
-      res.status(400).json({ error: 'priceId は必須です' })
-      return
+      res.status(400).json({ error: 'priceId は必須です' });
+      return;
     }
 
-    const userRepo = AppDataSource.getRepository(User)
-    const user = await userRepo.findOne({ where: { id: req.user!.userId } })
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: req.user!.userId } });
 
     if (!user) {
-      res.status(404).json({ error: 'ユーザーが見つかりません' })
-      return
+      res.status(404).json({ error: 'ユーザーが見つかりません' });
+      return;
     }
 
-    const customerId = await getOrCreateStripeCustomer(user)
+    const customerId = await getOrCreateStripeCustomer(user);
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -122,14 +127,17 @@ router.post('/subscription', authMiddleware, async (req: Request, res: Response)
         },
       ],
       mode: 'subscription',
+
+      // フロントエンドでリダイレクトするためのURL
       success_url: `${process.env.FRONTEND_URL}/payment/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL}/payment/cancel`,
       metadata: {
         userId: String(user.id),
       },
-    })
+    });
 
-    const paymentRepo = AppDataSource.getRepository(Payment)
+    // 決済履歴を保存
+    const paymentRepo = AppDataSource.getRepository(Payment);
     const payment = paymentRepo.create({
       userId: user.id,
       stripeSessionId: session.id,
@@ -137,56 +145,56 @@ router.post('/subscription', authMiddleware, async (req: Request, res: Response)
       amount: 0,
       currency: 'jpy',
       description: 'subscription',
-    })
-    await paymentRepo.save(payment)
+    });
+    await paymentRepo.save(payment);
 
-    res.json({ url: session.url, sessionId: session.id })
+    res.json({ url: session.url, sessionId: session.id });
   } catch (error) {
-    console.error('Subscription error:', error)
-    res.status(500).json({ error: 'サブスクリプションセッションの作成に失敗しました' })
+    console.error('Subscription error:', error);
+    res.status(500).json({ error: 'サブスクリプションセッションの作成に失敗しました' });
   }
-})
+});
 
 router.post('/portal', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userRepo = AppDataSource.getRepository(User)
-    const user = await userRepo.findOne({ where: { id: req.user!.userId } })
+    const userRepo = AppDataSource.getRepository(User);
+    const user = await userRepo.findOne({ where: { id: req.user!.userId } });
 
     if (!user) {
-      res.status(404).json({ error: 'ユーザーが見つかりません' })
-      return
+      res.status(404).json({ error: 'ユーザーが見つかりません' });
+      return;
     }
 
     if (!user.stripeCustomerId) {
-      res.status(400).json({ error: 'Stripe顧客情報が見つかりません' })
-      return
+      res.status(400).json({ error: 'Stripe顧客情報が見つかりません' });
+      return;
     }
 
     const session = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
       return_url: `${process.env.FRONTEND_URL}/payment`,
-    })
+    });
 
-    res.json({ url: session.url })
+    res.json({ url: session.url });
   } catch (error) {
-    console.error('Portal error:', error)
-    res.status(500).json({ error: 'ポータルセッションの作成に失敗しました' })
+    console.error('Portal error:', error);
+    res.status(500).json({ error: 'ポータルセッションの作成に失敗しました' });
   }
-})
+});
 
 router.get('/history', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const page = Math.max(1, parseInt(req.query.page as string) || 1)
-    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20))
-    const skip = (page - 1) * limit
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+    const skip = (page - 1) * limit;
 
-    const paymentRepo = AppDataSource.getRepository(Payment)
+    const paymentRepo = AppDataSource.getRepository(Payment);
     const [payments, total] = await paymentRepo.findAndCount({
       where: { userId: req.user!.userId },
       order: { createdAt: 'DESC' },
       skip,
       take: limit,
-    })
+    });
 
     res.json({
       payments,
@@ -196,34 +204,34 @@ router.get('/history', authMiddleware, async (req: Request, res: Response) => {
         total,
         totalPages: Math.ceil(total / limit),
       },
-    })
+    });
   } catch (error) {
-    console.error('Payment history error:', error)
-    res.status(500).json({ error: '決済履歴の取得に失敗しました' })
+    console.error('Payment history error:', error);
+    res.status(500).json({ error: '決済履歴の取得に失敗しました' });
   }
-})
+});
 
 router.get('/status/:sessionId', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const { sessionId } = req.params as { sessionId: string }
-    const paymentRepo = AppDataSource.getRepository(Payment)
+    const { sessionId } = req.params as { sessionId: string };
+    const paymentRepo = AppDataSource.getRepository(Payment);
     const payment = await paymentRepo.findOne({
       where: {
         stripeSessionId: sessionId,
         userId: req.user!.userId,
       },
-    })
+    });
 
     if (!payment) {
-      res.status(404).json({ error: '決済情報が見つかりません' })
-      return
+      res.status(404).json({ error: '決済情報が見つかりません' });
+      return;
     }
 
-    res.json({ payment })
+    res.json({ payment });
   } catch (error) {
-    console.error('Payment status error:', error)
-    res.status(500).json({ error: '決済ステータスの取得に失敗しました' })
+    console.error('Payment status error:', error);
+    res.status(500).json({ error: '決済ステータスの取得に失敗しました' });
   }
-})
+});
 
-export default router
+export default router;
