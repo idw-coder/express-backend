@@ -16,11 +16,13 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 async function getOrCreateStripeCustomer(user: User): Promise<string> {
   // すでに Stripe Customer が作成済みであればその ID をそのまま返す（重複作成を防ぐ）
   if (user.stripeCustomerId) {
-    // const existingCustomer = await stripe.customers.retrieve(user.stripeCustomerId)
-    // console.log(existingCustomer)
-
     return user.stripeCustomerId;
   }
+
+  // TODO: DB の stripeCustomerId が欠けたときに無条件 create すると Stripe 上で同一メールの重複 Customer が増えうる。
+  //       対策案: customers.list({ email, limit: 1 }) で既存を拾ってから create。競合時の二重作成・複数ヒット時の扱いは別途検討。
+  //       ローカルとデプロイで同一メール・同一 Stripe アカウントのときの共有／test と live の分離も保留で検討。
+  //       metadata の userId は環境間で意味がずれるため特定キーには不向き（補助なら email も検討）。
 
   /**
    * Stripe API に新しい Customer オブジェクトを作成するメソッド。
