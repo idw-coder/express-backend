@@ -73,8 +73,8 @@ app.use('/api/payment', paymentRouter);
 // アップロードファイルの静的配信
 app.use('/uploads', express.static(path.join(process.cwd(), "uploads")));
 
-// Viteビルド成果物の静的ファイル配信
-app.use(express.static(path.join(process.cwd(), "public")));
+// --- 旧Vue管理画面（Next.jsに統合済み） ---
+// app.use(express.static(path.join(process.cwd(), "public")));
 
 app.get("/", (req, res) => {
   res.json({ message: "health check" });
@@ -96,15 +96,14 @@ app.get("/view-test", (req, res) => {
   res.render("index");
 });
 
-// SPA フォールバック: /api 以外の未マッチルートは index.html を返す
-app.use((req, res, next) => {
-  // API ルートや既存のルートでない場合、index.html を返す
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(process.cwd(), "public", "index.html"));
-  } else {
-    next();
-  }
-});
+// --- 旧Vue管理画面 SPAフォールバック（Next.jsに統合済み） ---
+// app.use((req, res, next) => {
+//   if (!req.path.startsWith('/api')) {
+//     res.sendFile(path.join(process.cwd(), "public", "index.html"));
+//   } else {
+//     next();
+//   }
+// });
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
