@@ -84,7 +84,7 @@ router.patch('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const userRepository = AppDataSource.getRepository(User);
     const userMetaRepository = AppDataSource.getRepository(UserMeta);
-    const user = await userRepository.findOne({ where: { id: req.params.id } });
+    const user = await userRepository.findOne({ where: { id: Number(req.params.id) } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -131,7 +131,7 @@ router.patch('/:id', authMiddleware, adminMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const userRepository = AppDataSource.getRepository(User);
-    const user = await userRepository.findOne({ where: { id: req.params.id } });
+    const user = await userRepository.findOne({ where: { id: Number(req.params.id) } });
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
