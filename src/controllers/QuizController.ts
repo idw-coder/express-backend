@@ -301,6 +301,8 @@ export class QuizController {
         id: q.id,
         slug: q.slug,
         question: q.question,
+        createdAt: q.createdAt,
+        updatedAt: q.updatedAt,
         tags: tagsByQuizId.get(q.id) ?? [],
       }));
       res.json(list);
