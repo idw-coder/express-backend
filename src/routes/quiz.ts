@@ -14,19 +14,19 @@ const csvController = new QuizCsvController()
 
 router.get('/categories', (req, res) => categoryController.getCategories(req, res))
 
-router.post('/categories', authMiddleware, (req, res) => categoryController.createCategory(req, res))
+router.post('/categories', authMiddleware, requireRole('editor'), (req, res) => categoryController.createCategory(req, res))
 
-router.put('/categories/:id', authMiddleware, (req, res) => categoryController.updateCategory(req, res))
+router.put('/categories/:id', authMiddleware, requireRole('editor'), (req, res) => categoryController.updateCategory(req, res))
 
-router.delete('/categories/:id', authMiddleware, (req, res) => categoryController.deleteCategory(req, res))
+router.delete('/categories/:id', authMiddleware, requireRole('editor'), (req, res) => categoryController.deleteCategory(req, res))
 
 router.get('/tags', (req, res) => controller.getTags(req, res))
 
-router.post('/tags', authMiddleware, (req, res) => controller.createTag(req, res))
+router.post('/tags', authMiddleware, requireRole('editor'), (req, res) => controller.createTag(req, res))
 
-router.put('/tags/:tagId', authMiddleware, (req, res) => controller.updateTag(req, res))
+router.put('/tags/:tagId', authMiddleware, requireRole('editor'), (req, res) => controller.updateTag(req, res))
 
-router.delete('/tags/:tagId', authMiddleware, (req, res) => controller.deleteTag(req, res))
+router.delete('/tags/:tagId', authMiddleware, requireRole('editor'), (req, res) => controller.deleteTag(req, res))
 
 router.get('/category/:categoryId/quizzes', (req, res) =>
   controller.getQuizzesByCategory(req, res)
