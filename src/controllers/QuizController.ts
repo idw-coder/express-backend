@@ -16,7 +16,7 @@ export class QuizController {
   async getTags(req: Request, res: Response): Promise<void> {
     try {
       const repo = AppDataSource.getRepository(QuizTag);
-      const tags = await repo.find({ order: { name: "ASC" } });
+      const tags = await repo.find({ order: { slug: "ASC" } });
       const list = tags.map((t) => ({
         id: t.id,
         slug: t.slug,
@@ -140,7 +140,7 @@ export class QuizController {
         .where("quiz.category_id = :categoryId", { categoryId })
         .select(["tag.id", "tag.slug", "tag.name"])
         .distinct(true)
-        .orderBy("tag.name", "ASC")
+        .orderBy("tag.slug", "ASC")
         .getMany();
 
       res.json(tags);
