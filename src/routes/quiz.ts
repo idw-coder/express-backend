@@ -24,6 +24,8 @@ router.get('/tags', (req, res) => controller.getTags(req, res))
 
 router.post('/tags', authMiddleware, requireRole('editor'), (req, res) => controller.createTag(req, res))
 
+router.get('/tags/:tagId', authMiddleware, requireRole('editor'), (req, res) => controller.getTag(req, res))
+
 router.put('/tags/:tagId', authMiddleware, requireRole('editor'), (req, res) => controller.updateTag(req, res))
 
 router.delete('/tags/:tagId', authMiddleware, requireRole('editor'), (req, res) => controller.deleteTag(req, res))

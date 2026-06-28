@@ -2,7 +2,7 @@
 //   - QuizTagController.ts      : getTags / createTag / updateTag / deleteTag
 //   - QuizController.ts         : getQuizzesByCategory / getQuizDetail / createQuiz / updateQuiz / deleteQuiz
 
-// quiz_tag が quiz_tagging から参照中の場合は削除せず 409 を返す（deleteTag で事前チェック済み）
+// quiz_tag 削除時は quiz_tagging を先に削除し、タグ本体を削除する
 
 import { Request, Response } from "express";
 import { AppDataSource } from "../datasource";
@@ -85,6 +85,36 @@ export class QuizController {
     }
   }
 
+  async getTag(req: Request, res: Response): Promise<void> {
+    try {
+      const tagId = Number(req.params.tagId);
+      if (!Number.isFinite(tagId)) {
+        res.status(400).json({ error: "Invalid tag id" });
+        return;
+      }
+
+      const tagRepo = AppDataSource.getRepository(QuizTag);
+      const tag = await tagRepo.findOne({ where: { id: tagId } });
+      if (!tag) {
+        res.status(404).json({ error: "Tag not found" });
+        return;
+      }
+
+      const taggingRepo = AppDataSource.getRepository(QuizTagging);
+      const quizCount = await taggingRepo.count({ where: { quizTagId: tagId } });
+
+      res.json({
+        id: tag.id,
+        slug: tag.slug,
+        name: tag.name,
+        quizCount,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+
   async deleteTag(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user?.userId;
@@ -97,25 +127,28 @@ export class QuizController {
         res.status(400).json({ error: "Invalid tag id" });
         return;
       }
-      const repo = AppDataSource.getRepository(QuizTag);
-      const tag = await repo.findOne({ where: { id: tagId } });
-      if (!tag) {
+      const result = await AppDataSource.transaction(async (manager) => {
+        const tagRepo = manager.getRepository(QuizTag);
+        const tag = await tagRepo.findOne({ where: { id: tagId } });
+        if (!tag) return null;
+
+        const detached = await manager
+          .getRepository(QuizTagging)
+          .delete({ quizTagId: tagId });
+        await tagRepo.delete(tagId);
+
+        return {
+          deletedId: tagId,
+          detachedCount: detached.affected ?? 0,
+        };
+      });
+
+      if (!result) {
         res.status(404).json({ error: "Tag not found" });
         return;
       }
 
-      const taggingRepo = AppDataSource.getRepository(QuizTagging);
-      const usageCount = await taggingRepo.count({ where: { quizTagId: tagId } });
-      if (usageCount > 0) {
-        res.status(409).json({
-          error: "このタグはクイズに使用されているため削除できません",
-          usage_count: usageCount,
-        });
-        return;
-      }
-
-      await repo.remove(tag);
-      res.json({ message: "Tag deleted" });
+      res.json({ message: "Tag deleted", ...result });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Internal server error" });
