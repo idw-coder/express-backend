@@ -12,6 +12,12 @@ import { QuizChoice } from "../entities/QuizChoice";
 import { QuizTagging } from "../entities/QuizTagging";
 import { QuizTag } from "../entities/QuizTag";
 
+function parsePositiveInteger(value: string | string[] | undefined): number | null {
+  if (Array.isArray(value)) return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 export class QuizController {
   async getTags(req: Request, res: Response): Promise<void> {
     try {
@@ -63,8 +69,8 @@ export class QuizController {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
-      const tagId = Number(req.params.tagId);
-      if (!Number.isFinite(tagId)) {
+      const tagId = parsePositiveInteger(req.params.tagId);
+      if (tagId == null) {
         res.status(400).json({ error: "Invalid tag id" });
         return;
       }
@@ -87,8 +93,8 @@ export class QuizController {
 
   async getTag(req: Request, res: Response): Promise<void> {
     try {
-      const tagId = Number(req.params.tagId);
-      if (!Number.isFinite(tagId)) {
+      const tagId = parsePositiveInteger(req.params.tagId);
+      if (tagId == null) {
         res.status(400).json({ error: "Invalid tag id" });
         return;
       }
@@ -122,8 +128,8 @@ export class QuizController {
         res.status(401).json({ error: "Unauthorized" });
         return;
       }
-      const tagId = Number(req.params.tagId);
-      if (!Number.isFinite(tagId)) {
+      const tagId = parsePositiveInteger(req.params.tagId);
+      if (tagId == null) {
         res.status(400).json({ error: "Invalid tag id" });
         return;
       }
